@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure KYC Verification</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4f46e5;      /* Indigo 600 */
+            --primary-hover: #4338ca; /* Indigo 700 */
+            --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --success: #10b981;
+            --error: #ef4444;
+            --border-radius: 16px;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* --- Utility Classes --- */
+        .hidden { display: none !important; }
+
+        /* --- Main Card --- */
+        .app-container {
+            width: 100%;
+            max-width: 600px;
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            transition: height 0.3s ease;
+        }
+
+        /* --- Header & Stepper --- */
+        .header {
+            background: #ffffff;
+            padding: 30px 30px 10px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .brand {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .brand h1 { margin: 0; font-size: 1.5rem; letter-spacing: -0.5px; color: #0f172a; }
+        .brand p { margin: 5px 0 0; font-size: 0.875rem; color: var(--text-muted); }
+
+        .stepper-wrapper {
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 10px 10px;
+        }
+        
+        .progress-line {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            height: 2px;
+            background: #e2e8f0;
+            z-index: 0;
+        }
+        
+        .progress-line-fill {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            height: 2px;
+            background: var(--success);
+            z-index: 0;
+            width: 0%; /* Dynamic */
+            transition: width 0.4s ease;
+        }
+
+        .step-item {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+
+        .step-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #fff;
+            border: 2px solid #e2e8f0;
+            color: #94a3b8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .step-item.active .step-circle {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: #e0e7ff;
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+        }
+
+        .step-item.done .step-circle {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+
+        .step-label {
+            margin-top: 8px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #94a3b8;
+            transition: color 0.3s;
+        }
+        .step-item.active .step-label { color: var(--primary); font-weight: 600; }
+        .step-item.done .step-label { color: var(--success); }
+
+        /* --- Content Area --- */
+        .content {
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .title-area h2 { margin: 0 0 10px; font-size: 1.25rem; color: #1e293b; }
+        .title-area p { margin: 0 0 25px; font-size: 0.95rem; color: #64748b; line-height: 1.5; }
+
+        /* --- Upload Zone --- */
+        .upload-zone {
+            width: 100%;
+            background: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 40px 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--primary);
+            background: #eff6ff;
+            transform: translateY(-2px);
+        }
+
+        .upload-icon {
+            font-size: 40px;
+            color: #94a3b8;
+            margin-bottom: 15px;
+            transition: color 0.2s;
+        }
+        .upload-zone:hover .upload-icon { color: var(--primary); }
+
+        .zone-title { font-weight: 600; color: #334155; margin-bottom: 5px; }
+        .zone-desc { font-size: 0.8rem; color: #94a3b8; }
+
+        .attempts-tag {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #fff1f2;
+            color: #e11d48;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 6px;
+            text-transform: uppercase;
+        }
+
+        /* --- Document List --- */
+        .doc-list {
+            width: 100%;
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: left;
+            margin-bottom: 25px;
+            font-size: 0.9rem;
+        }
+        .doc-list h4 { margin: 0 0 8px; color: #475569; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .doc-list ul { margin: 0; padding-left: 20px; color: #334155; }
+        .doc-list li { margin-bottom: 4px; }
+
+        /* --- Camera & Video --- */
+        .camera-wrapper {
+            width: 100%;
+            max-width: 400px;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            background: black;
+            display: none; /* Toggled via JS */
+        }
+        
+        video { width: 100%; display: block; }
+        
+        .scan-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 100%;
+            background: linear-gradient(to bottom, transparent, rgba(37, 99, 235, 0.2), transparent);
+            border-bottom: 2px solid var(--primary);
+            animation: scan 2s infinite linear;
+            z-index: 2;
+            pointer-events: none;
+        }
+        @keyframes scan {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        /* --- Buttons --- */
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+            transition: transform 0.1s, box-shadow 0.1s;
+            margin-top: 20px;
+        }
+        .btn:hover { background: var(--primary-hover); box-shadow: 0 6px 10px -1px rgba(79, 70, 229, 0.3); }
+        .btn:active { transform: scale(0.98); }
+        
+        /* --- Status Messages --- */
+        .status-box {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            width: 100%;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            display: none; /* Toggled */
+        }
+        .status-box.loading { background: #eff6ff; color: #1e40af; border: 1px solid #dbeafe; }
+        .status-box.success { background: #f0fdf4; color: #166534; border: 1px solid #dcfce7; }
+        .status-box.error { background: #fef2f2; color: #991b1b; border: 1px solid #fee2e2; }
+
+        .spinner {
+            border: 3px solid rgba(0,0,0,0.1);
+            border-radius: 50%;
+            border-top: 3px solid currentColor;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* --- SUCCESS SCREEN STYLES (NEW) --- */
+        .success-icon-large {
+            font-size: 64px;
+            color: var(--success);
+            margin-bottom: 20px;
+            animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+        .summary-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            width: 100%;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.9rem;
+        }
+        .summary-row:last-child { border-bottom: none; }
+        
+        .s-label { color: var(--text-muted); }
+        .s-value { font-weight: 600; color: var(--text-main); text-align: right; }
+        .status-badge {
+            background: #dcfce7;
+            color: #166534;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        /* Mobile Adjustment */
+        @media (max-width: 480px) {
+            .app-container { height: 100vh; border-radius: 0; }
+            .content { padding: 25px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    
+    <div class="header">
+        <div class="brand">
+            <h1><i class="fas fa-shield-halved" style="color: var(--primary);"></i> SecureKYC</h1>
+            <p>Regulatory Compliance Check</p>
+        </div>
+
+        <div class="stepper-wrapper">
+            <div class="progress-line"></div>
+            <div class="progress-line-fill" id="progress-fill"></div>
+            
+            <div class="step-item active" id="step-0">
+                <div class="step-circle">1</div>
+                <div class="step-label">Identity</div>
+            </div>
+            <div class="step-item" id="step-1">
+                <div class="step-circle">2</div>
+                <div class="step-label">Address</div>
+            </div>
+            <div class="step-item" id="step-2">
+                <div class="step-circle">3</div>
+                <div class="step-label">Photo</div>
+            </div>
+            <div class="step-item" id="step-3">
+                <div class="step-circle">4</div>
+                <div class="step-label">Live</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="content" id="main-content">
+        
+        <div class="title-area">
+            <h2 id="step-title">Loading...</h2>
+            <p id="step-desc">Please wait while we initialize the secure environment.</p>
+        </div>
+
+        <div id="doc-list-container" class="doc-list hidden">
+            </div>
+
+        <div id="upload-area" class="upload-zone" onclick="triggerFileSelect()">
+            <div class="attempts-tag" id="attempts-badge">Attempt 1/3</div>
+            <div class="upload-icon"><i class="fas fa-cloud-arrow-up"></i></div>
+            <div class="zone-title">Click to Upload Document</div>
+            <div class="zone-desc">JPG or PNG (Max 5MB)</div>
+        </div>
+
+        <div id="camera-area" class="camera-wrapper">
+            <div class="scan-overlay"></div>
+            <video id="video-feed" playsinline muted autoplay></video>
+        </div>
+
+        <button id="action-btn" class="btn hidden">Capture Verification</button>
+
+        <div id="status-msg" class="status-box"></div>
+
+    </div>
+
+    <input type="file" id="file-input" hidden accept="image/*">
+
+</div>
+
+<script>
+    /* =========================================
+       KYC LOGIC
+       ========================================= */
+
+    const STATE = {
+        step: 0, 
+        attempts: 1,
+        maxAttempts: 3,
+        data: { identity: "Pending", address: "Pending", photo: "Pending" }
+    };
+
+    const CLASSIFIER = {
+        PAN: { keywords: ["INCOME", "TAX", "PERMANENT", "ACCOUNT", "PAN", "GOVT", "INDIA"], required: 2, label: "PAN Card" },
+        AADHAAR: { keywords: ["AADHAAR", "UIDAI", "MERA", "FATHER", "DOB", "MALE", "FEMALE"], required: 2, label: "Aadhaar Card" },
+        VOTER: { keywords: ["ELECTION", "COMMISSION", "IDENTITY", "CARD", "ELECTOR"], required: 2, label: "Voter ID" },
+        PASSPORT: { keywords: ["PASSPORT", "REPUBLIC", "INDIA", "SURNAME", "GIVEN", "NAME"], required: 2, label: "Passport" }
+    };
+
+    // UI Refs
+    const UI = {
+        title: document.getElementById('step-title'),
+        desc: document.getElementById('step-desc'),
+        docList: document.getElementById('doc-list-container'),
+        uploadZone: document.getElementById('upload-area'),
+        cameraZone: document.getElementById('camera-area'),
+        video: document.getElementById('video-feed'),
+        btn: document.getElementById('action-btn'),
+        status: document.getElementById('status-msg'),
+        attempts: document.getElementById('attempts-badge'),
+        fileInput: document.getElementById('file-input'),
+        progressFill: document.getElementById('progress-fill'),
+        steps: [0,1,2,3].map(i => document.getElementById(`step-${i}`))
+    };
+
+    window.onload = initStep;
+
+    function initStep() {
+        // Reset Visuals
+        UI.status.style.display = 'none';
+        UI.uploadZone.style.display = 'block';
+        UI.cameraZone.style.display = 'none';
+        UI.btn.classList.add('hidden');
+        UI.fileInput.value = '';
+        
+        updateStepper();
+
+        // Step Configuration
+        if (STATE.step === 0) {
+            UI.title.innerText = "Proof of Identity";
+            UI.desc.innerText = "Please upload a valid government-issued ID to verify your identity.";
+            UI.docList.classList.remove('hidden');
+            UI.docList.innerHTML = `
+                <h4>Accepted Documents</h4>
+                <ul><li>PAN Card</li><li>Aadhaar Card</li><li>Passport (Min 6 months validity)</li></ul>`;
+        } 
+        else if (STATE.step === 1) {
+            UI.title.innerText = "Proof of Address";
+            UI.desc.innerText = "Please upload a document validating your permanent address.";
+            UI.docList.classList.remove('hidden');
+            UI.docList.innerHTML = `
+                <h4>Accepted Documents</h4>
+                <ul><li>Aadhaar Card</li><li>Passport</li><li>Voter ID</li></ul>`;
+        } 
+        else if (STATE.step === 2) {
+            // STEP 2: PHOTO UPLOAD - HIDE DOC LIST
+            UI.title.innerText = "Passport Photo";
+            UI.desc.innerText = "Upload a recent passport-size photograph for facial matching.";
+            UI.docList.classList.add('hidden'); 
+        } 
+        else if (STATE.step === 3) {
+            initCameraStep();
+        } 
+        else if (STATE.step === 4) {
+            showSuccessScreen();
+        }
+
+        updateAttemptBadge();
+    }
+
+    // --- Actions ---
+
+    function triggerFileSelect() {
+        if(STATE.attempts > STATE.maxAttempts) return;
+        UI.fileInput.click();
+    }
+
+    UI.fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+
+        if(file.size > 5 * 1024 * 1024) {
+            showStatus('error', "File is too large. Max 5MB allowed.");
+            return;
+        }
+
+        if(STATE.step === 2) {
+            // Photo Step
+            showStatus('loading', "Uploading and analyzing quality...");
+            setTimeout(() => {
+                STATE.data.photo = "Uploaded";
+                showStatus('success', "Photo uploaded successfully.");
+                setTimeout(nextStep, 1500);
+            }, 1500);
+        } else {
+            // OCR Step
+            await performOCR(file);
+        }
+    });
+
+    async function performOCR(file) {
+        showStatus('loading', "Scanning document... (OCR Processing)");
+        
+        try {
+            const worker = await Tesseract.createWorker('eng');
+            const ret = await worker.recognize(file);
+            const text = ret.data.text.toUpperCase();
+            await worker.terminate();
+
+            console.log("OCR:", text);
+            validateDoc(text);
+
+        } catch (err) {
+            console.error(err);
+            showStatus('error', "Could not read document. Please upload a clearer image.");
+        }
+    }
+
+    function validateDoc(text) {
+        let type = null;
+        for (const [key, cfg] of Object.entries(CLASSIFIER)) {
+            const hits = cfg.keywords.filter(w => text.includes(w));
+            if(hits.length >= cfg.required) { type = key; break; }
+        }
+
+        // Logic
+        let isValid = false;
+        let msg = "";
+
+        if(STATE.step === 0) { // Identity
+            if(['PAN', 'AADHAAR'].includes(type)) { 
+                isValid = true; 
+                STATE.data.identity = CLASSIFIER[type].label;
+                msg = `${CLASSIFIER[type].label} Verified`; 
+            }
+            else if(type === 'PASSPORT' && checkPassport()) { 
+                isValid = true; 
+                STATE.data.identity = "Passport";
+                msg = "Passport Verified"; 
+            }
+            else { msg = `Invalid Identity Document. Detected: ${type || 'Unknown'}`; }
+        } 
+        else if(STATE.step === 1) { // Address
+            if(['AADHAAR', 'VOTER'].includes(type)) { 
+                isValid = true; 
+                STATE.data.address = CLASSIFIER[type].label;
+                msg = `${CLASSIFIER[type].label} Verified`; 
+            }
+            else if(type === 'PASSPORT' && checkPassport()) { 
+                isValid = true; 
+                STATE.data.address = "Passport";
+                msg = "Passport Verified"; 
+            }
+            else { msg = `Invalid Address Document. Detected: ${type || 'Unknown'}`; }
+        }
+
+        if(isValid) {
+            showStatus('success', msg);
+            setTimeout(nextStep, 2000);
+        } else {
+            handleFail(msg);
+        }
+    }
+
+    function checkPassport() { return Math.random() > 0.1; } // 90% pass
+
+    // --- Camera ---
+
+    function initCameraStep() {
+        UI.docList.classList.add('hidden'); 
+        UI.uploadZone.style.display = 'none';
+        UI.cameraZone.style.display = 'block';
+        UI.btn.classList.remove('hidden');
+        
+        UI.title.innerText = "Liveness Check";
+        UI.desc.innerText = "Please look directly at the camera. Ensure your face is well-lit.";
+        
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => { UI.video.srcObject = stream; })
+            .catch(err => handleFail("Camera access denied."));
+            
+        UI.btn.onclick = captureSelfie;
+    }
+
+    function captureSelfie() {
+        showStatus('loading', "Analyzing biometric data...");
+        
+        setTimeout(() => {
+            const stream = UI.video.srcObject;
+            if(stream) stream.getTracks().forEach(t => t.stop());
+
+            // Liveness Simulation (80% pass)
+            if(Math.random() > 0.2) {
+                showStatus('success', "Face Match & Liveness Confirmed.");
+                setTimeout(nextStep, 2000);
+            } else {
+                handleFail("Liveness Check Failed. Possible static image detected.");
+            }
+        }, 2000);
+    }
+
+    // --- Utils ---
+
+    function nextStep() {
+        STATE.step++;
+        STATE.attempts = 1;
+        initStep();
+    }
+
+    function handleFail(msg) {
+        STATE.attempts++;
+        showStatus('error', msg);
+        updateAttemptBadge();
+
+        if(STATE.attempts > STATE.maxAttempts) {
+            UI.uploadZone.style.pointerEvents = 'none';
+            UI.uploadZone.style.opacity = '0.6';
+            UI.btn.disabled = true;
+            UI.title.innerText = "Verification Failed";
+            UI.title.style.color = "#ef4444";
+            UI.desc.innerText = "Maximum attempts exceeded. Please contact support.";
+        }
+    }
+
+    function showStatus(type, text) {
+        UI.status.className = `status-box ${type}`;
+        UI.status.style.display = 'flex';
+        
+        let icon = '';
+        if(type === 'loading') icon = '<div class="spinner"></div>';
+        if(type === 'success') icon = '<i class="fas fa-check-circle"></i>';
+        if(type === 'error') icon = '<i class="fas fa-exclamation-circle"></i>';
+        
+        UI.status.innerHTML = `${icon} <span>${text}</span>`;
+    }
+
+    function updateStepper() {
+        const pct = (STATE.step / 3) * 100;
+        UI.progressFill.style.width = `${pct}%`;
+
+        UI.steps.forEach((el, idx) => {
+            el.className = 'step-item';
+            if(idx === STATE.step) el.classList.add('active');
+            if(idx < STATE.step) {
+                el.classList.add('done');
+                el.querySelector('.step-circle').innerHTML = '<i class="fas fa-check"></i>';
+            } else {
+                el.querySelector('.step-circle').innerText = idx + 1;
+            }
+        });
+    }
+
+    function updateAttemptBadge() {
+        UI.attempts.innerText = `Attempt ${Math.min(STATE.attempts, STATE.maxAttempts)}/3`;
+    }
+
+    // --- IMPROVED SUCCESS SCREEN ---
+    function showSuccessScreen() {
+        // Hide Interactive Elements
+        UI.docList.classList.add('hidden');
+        UI.uploadZone.style.display = 'none';
+        UI.cameraZone.style.display = 'none';
+        UI.btn.classList.remove('hidden');
+        UI.status.style.display = 'none';
+
+        // Generate Random Application ID
+        const appId = "KYC-" + Math.floor(100000 + Math.random() * 900000);
+        const dateStr = new Date().toLocaleDateString();
+
+        // Inject Content
+        UI.title.innerHTML = '<span style="color:var(--text-main)">Application Approved</span>';
+        UI.desc.innerText = "Your details have been verified successfully.";
+        
+        // Build the Summary Card HTML
+        const summaryHTML = `
+            <div style="text-align: center;">
+                <div class="success-icon-large">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+            </div>
+            
+            <div class="summary-card">
+                <div class="summary-row">
+                    <span class="s-label">Application ID</span>
+                    <span class="s-value">${appId}</span>
+                </div>
+                <div class="summary-row">
+                    <span class="s-label">Date</span>
+                    <span class="s-value">${dateStr}</span>
+                </div>
+                <div class="summary-row">
+                    <span class="s-label">Identity Proof</span>
+                    <span class="s-value">${STATE.data.identity}</span>
+                </div>
+                <div class="summary-row">
+                    <span class="s-label">Address Proof</span>
+                    <span class="s-value">${STATE.data.address}</span>
+                </div>
+                <div class="summary-row">
+                    <span class="s-label">Biometric Check</span>
+                    <span class="s-value">Confirmed</span>
+                </div>
+                <div class="summary-row" style="margin-top:10px; border-top:1px dashed #e2e8f0; padding-top:10px;">
+                    <span class="s-label">Overall Status</span>
+                    <span class="status-badge">Approved</span>
+                </div>
+            </div>
+        `;
+
+        // Inject HTML
+        const contentDiv = document.createElement('div');
+        contentDiv.style.width = '100%';
+        contentDiv.innerHTML = summaryHTML;
+        
+        // Clear previous description and append new details
+        UI.desc.innerHTML = ""; // Clear plain text desc
+        UI.desc.appendChild(contentDiv);
+
+        UI.btn.innerText = "Return to Dashboard";
+        UI.btn.onclick = () => location.reload();
+    }
+</script>
+
+</body>
+</html>
