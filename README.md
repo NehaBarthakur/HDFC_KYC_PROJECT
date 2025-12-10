@@ -1,0 +1,7 @@
+Digital KYC
+
+The Optimized Hybrid KYC Verification System offers a transformative solution to the critical inefficiencies currently hampering the bank's digital onboarding process. By shifting intelligent validation logic to the "edge" (on-device AI) and fortifying server-side processing with asynchronous workflows and human-in-the-loop interventions, the proposed architecture directly addresses the root causes of the prohibitive 35% scan failure and 25% upload failure rates.
+
+The projected outcomes—specifically the reduction of overall rejections by 50-70% and the compression of Turnaround Time (TAT) to under 20 seconds—represent a significant leap in operational efficiency. This solution not only recovers lost business opportunities by minimizing customer abandonments but also ensures strict adherence to regulatory mandates regarding PAN and Aadhaar verification without compromising the user experience. By implementing features like auto-detection, intuitive UX overlays, and resilient upload mechanisms, the system bridges the gap between technical complexity and user ease.
+
+While residual risks regarding device fragmentation and network variability remain, the proposed phased MVP rollout and robust fallback mechanisms provide a secure path for implementation. Ultimately, this project redefines the KYC journey from a friction-heavy barrier to entry into a seamless, trust-building first touchpoint, positioning the bank as a digital-first leader in customer acquisition and retention.
